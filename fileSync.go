@@ -18,6 +18,8 @@ const (
 
 var CollectFiles map[string]struct{}
 var SendTimer *time.Timer
+var Str bytes.Buffer
+var Msg *bytes.Buffer
 var Conn net.Conn
 
 const (
@@ -52,21 +54,22 @@ func SendToErl() {
 	fmt.Println("IMY****************发送数据到tcp : ", CollectFiles)
 
 	// 拼写数据
-	var buffer bytes.Buffer
 	for k := range CollectFiles {
-		buffer.WriteString(k)
-		buffer.WriteString("\r\n")
+		Str.WriteString(k)
+		Str.WriteString("\r\n")
 	}
 	CollectFiles = map[string]struct{}{}
 
-	var length = int32(len(buffer.Bytes()))
-	var msg = new(bytes.Buffer)
+	var length = int32(len(Str.Bytes()))
 	//写入消息头
-	_ = binary.Write(msg, binary.BigEndian, length)
+	_ = binary.Write(Msg, binary.BigEndian, length)
 	//写入消息体
-	_ = binary.Write(msg, binary.BigEndian, buffer.Bytes())
-	fmt.Println("IMY****************发送数据到sock : ", msg)
-	Conn.Write(msg.Bytes())
+	_ = binary.Write(Msg, binary.BigEndian, Str.Bytes())
+	fmt.Println("IMY****************发送数据到sock : ", Msg)
+	Conn.Write(Msg.Bytes())
+	Str.Reset()
+	Msg.Reset()
+
 
 	SendTimer.Reset(time.Second * SleepDur)
 }
@@ -181,6 +184,8 @@ func main() {
 		fmt.Println("IMY****************建立tcp失败 : ", Addr)
 		return
 	}
+	Msg = new(bytes.Buffer)
+
 	fmt.Println("IMY****************建立tcp成功 : ", os.Args[0])
 	watch, _ := fsnotify.NewWatcher()
 	w := Watch{watch: watch}
