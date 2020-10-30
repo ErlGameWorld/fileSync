@@ -23,6 +23,7 @@ var Conn net.Conn
 const (
 	hrl = ".hrl"
 	erl = ".erl"
+	beam = ".beam"
 	dtl = ".dtl"
 	lfe = "lfe"
 	ex  = "ex"
@@ -37,7 +38,7 @@ func CollectFile(File string) {
 	ext := filepath.Ext(File)
 	fmt.Println("IMY****************收集数据 : ", File)
 	fmt.Println("IMY****************收集数据ext : ", ext)
-	if ext != "" && (ext == erl || ext == hrl || ext == ex || ext == dtl || ext == lfe) {
+	if ext != "" && (ext == erl || ext == beam || ext == hrl || ext == ex || ext == dtl || ext == lfe) {
 		CollectFiles[File] = struct{}{}
 		SendTimer.Reset(time.Second * SendDur)
 		fmt.Println("IMY****************收集数据成功: ", File)
@@ -46,11 +47,10 @@ func CollectFile(File string) {
 	}
 }
 
-// 发送文件到erl层
+// 发送文件列表到erl层
 func SendToErl() {
 	fmt.Println("IMY****************发送数据到tcp : ", CollectFiles)
 
-	// IMY-todo 通过tcp 发送数据
 	// 拼写数据
 	var buffer bytes.Buffer
 	for k := range CollectFiles {
@@ -65,6 +65,7 @@ func SendToErl() {
 	_ = binary.Write(msg, binary.BigEndian, length)
 	//写入消息体
 	_ = binary.Write(msg, binary.BigEndian, buffer.Bytes())
+	fmt.Println("IMY****************发送数据到sock : ", msg)
 	Conn.Write(msg.Bytes())
 
 	SendTimer.Reset(time.Second * SleepDur)
@@ -174,7 +175,8 @@ func main() {
 	defer SendTimer.Stop()
 
 	Addr := "localhost:" + os.Args[2]
-	Conn, err := net.Dial("tcp", Addr)
+	var err error
+	Conn, err = net.Dial("tcp", Addr)
 	if err != nil {
 		fmt.Println("IMY****************建立tcp失败 : ", Addr)
 		return
@@ -188,4 +190,5 @@ func main() {
 
 	_, _ = Conn.Read(data)
 	Conn.Close()
+	fmt.Println("IMY****************建立tcp关闭了 : ", os.Args[0])
 }
