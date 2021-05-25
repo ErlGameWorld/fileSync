@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	SendDur  = 1500			// 发送时间间隔毫秒
+	SendDur  = 1111			// 发送时间间隔毫秒
 	SleepDur = 86400000		// 定期器初始睡眠时间
 )
 
@@ -193,7 +193,7 @@ func (w *Watch) watchDir(dir string) {
 				}
 			case <-w.watch.Errors:
 				{
-					return
+					continue
 				}
 			case <-SendTimer.C:
 				SendToErl()
