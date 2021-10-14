@@ -3,17 +3,19 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/fsnotify/fsnotify"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 const (
-	SendDur  = 1111			// 发送时间间隔毫秒
-	SleepDur = 86400000		// 定期器初始睡眠时间
+	SendDur  = 1111     // 发送时间间隔毫秒
+	SleepDur = 86400000 // 定期器初始睡眠时间
 )
 
 var CollectFiles map[string]struct{}
@@ -25,22 +27,55 @@ var DelDirs []string
 var LenBuff []byte
 
 const (
-	hrl  = ".hrl"
-	erl  = ".erl"
-	beam = ".beam"
-	dtl  = ".dtl"
-	lfe  = "lfe"
-	ex   = "ex"
-	idea = ".idea"
-	svn = ".svn"
-	git = ".git"
-	lock = ".lock"
-	bea = ".bea"
+	hrl    = ".hrl"
+	erl    = ".erl"
+	beam   = ".beam"
+	dtl    = ".dtl"
+	lfe    = "lfe"
+	ex     = "ex"
+	idea   = ".idea"
+	svn    = ".svn"
+	git    = ".git"
+	lock   = ".lock"
+	bea    = ".bea"
 	config = ".config"
 )
 
 type Watch struct {
 	watch *fsnotify.Watcher
+}
+
+const (
+	//LOGPATH  LOGPATH/time.Now().Format(FORMAT)/*.log
+	LOGPATH = "./"
+	//FORMAT .
+	FORMAT = "20060102"
+	//LineFeed 换行
+	LineFeed = "\r\n"
+	FileName = "fileSync.log"
+)
+
+//以天为基准,存日志
+var path = LOGPATH + time.Now().Format(FORMAT) + "_"
+
+//WriteLog return error
+func WriteLog(msg string) error {
+	var (
+		err error
+		f   *os.File
+	)
+
+	f, err = os.OpenFile(path+FileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	_, err = io.WriteString(f, "Tag"+"::"+msg+LineFeed)
+
+	defer f.Close()
+	return err
+}
+
+//IsExist  判断文件夹/文件是否存在  存在返回 true
+func IsExist(f string) bool {
+	_, err := os.Stat(f)
+	return err == nil || os.IsExist(err)
 }
 
 // 收集更改了的文件
@@ -97,7 +132,7 @@ func isDelDir(dirs []string, curDirs string) bool {
 
 // 判断所给路径文件/文件夹是否存在
 func existPath(path string) bool {
-	_, err := os.Stat(path)    //os.Stat获取文件信息
+	_, err := os.Stat(path) //os.Stat获取文件信息
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false
@@ -109,45 +144,6 @@ func existPath(path string) bool {
 
 //监控目录
 func (w *Watch) watchDir(dir string) {
-	//通过Walk来遍历目录下的所有子目录
-	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		//这里判断是否为目录，只需监控目录即可 目录下的文件也在监控范围内，不需要我们一个一个加
-		if info.IsDir() {
-			path, err := filepath.Abs(path)
-			if err != nil {
-				return err
-			}
-			if !isHidden(path) && isOnlyDir(OnlyDirs, path) && !isDelDir(DelDirs, path) {
-				err = w.watch.Add(path)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	})
-	for _, v := range AddDirs {
-		if v != "" && existPath(v) {
-			//通过Walk来遍历目录下的所有子目录
-			filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
-				//这里判断是否为目录，只需监控目录即可 目录下的文件也在监控范围内，不需要我们一个一个加
-				if info.IsDir() {
-					path, err := filepath.Abs(path)
-					if err != nil {
-						return err
-					}
-					if !isHidden(path) {
-						err = w.watch.Add(path)
-						if err != nil {
-							return err
-						}
-					}
-				}
-				return nil
-			})
-		}
-	}
-
 	// 启动文件监听goroutine
 	go func() {
 		for {
@@ -200,6 +196,53 @@ func (w *Watch) watchDir(dir string) {
 			}
 		}
 	}()
+
+	//通过Walk来遍历目录下的所有子目录
+	filepath.WalkDir(dir, func(path string, info fs.DirEntry, err error) error {
+		//这里判断是否为目录，只需监控目录即可 目录下的文件也在监控范围内，不需要我们一个一个加
+
+		if err == nil && info.IsDir() {
+			path, err := filepath.Abs(path)
+			if err != nil {
+				return err
+			}
+			if !isHidden(path) && isOnlyDir(OnlyDirs, path) && !isDelDir(DelDirs, path) {
+				err = w.watch.Add(path)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+
+	for _, v := range AddDirs {
+		if v != "" && existPath(v) {
+			//通过Walk来遍历目录下的所有子目录
+			filepath.WalkDir(v, func(path string, info fs.DirEntry, err error) error {
+				//这里判断是否为目录，只需监控目录即可 目录下的文件也在监控范围内，不需要我们一个一个加
+				if err == nil && info.IsDir() {
+					path, err := filepath.Abs(path)
+					if err != nil {
+						return err
+					}
+					if !isHidden(path) {
+						err = w.watch.Add(path)
+						if err != nil {
+							return err
+						}
+					}
+				}
+				return nil
+			})
+		}
+	}
+
+	//for _, v := range AddDirs {
+	//	if v != "" && existPath(v) {
+	//		w.watch.Add(v)
+	//	}
+	//}
 }
 
 //********************************************** port start ************************************************************
@@ -245,6 +288,7 @@ func SendToErl() {
 	Write(Str.Bytes())
 	Str.Reset()
 }
+
 //********************************************** port end   ************************************************************
 
 func main() {
@@ -252,7 +296,7 @@ func main() {
 	SendTimer = time.NewTimer(time.Millisecond * SleepDur)
 	defer SendTimer.Stop()
 	LenBuff = make([]byte, 4)
-	
+
 	Write([]byte("init"))
 	data, err := Read()
 	if err == io.EOF || err != nil {
@@ -263,6 +307,7 @@ func main() {
 	OnlyDirs = strings.Split(dirs[1], "|")
 	DelDirs = strings.Split(dirs[2], "|")
 	watch, _ := fsnotify.NewWatcher()
+	defer watch.Close()
 	w := Watch{watch: watch}
 	w.watchDir("./")
 	Read()
