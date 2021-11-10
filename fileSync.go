@@ -21,7 +21,8 @@ const (
 var CollectFiles map[string]struct{}
 var SendTimer *time.Timer
 var Str bytes.Buffer
-var AddDirs []string
+var AddExtraDirs []string
+var AddOnlyDirs []string
 var OnlyDirs []string
 var DelDirs []string
 var LenBuff []byte
@@ -216,7 +217,7 @@ func (w *Watch) watchDir(dir string) {
 		return nil
 	})
 
-	for _, v := range AddDirs {
+	for _, v := range AddExtraDirs {
 		if v != "" && existPath(v) {
 			//通过Walk来遍历目录下的所有子目录
 			filepath.WalkDir(v, func(path string, info fs.DirEntry, err error) error {
@@ -238,11 +239,11 @@ func (w *Watch) watchDir(dir string) {
 		}
 	}
 
-	//for _, v := range AddDirs {
-	//	if v != "" && existPath(v) {
-	//		w.watch.Add(v)
-	//	}
-	//}
+	for _, v := range AddOnlyDirs {
+		if v != "" && existPath(v) {
+			w.watch.Add(v)
+		}
+	}
 }
 
 //********************************************** port start ************************************************************
@@ -303,9 +304,10 @@ func main() {
 		return
 	}
 	dirs := strings.Split(string(data), "\r\n")
-	AddDirs = strings.Split(dirs[0], "|")
-	OnlyDirs = strings.Split(dirs[1], "|")
-	DelDirs = strings.Split(dirs[2], "|")
+	AddExtraDirs = strings.Split(dirs[0], "|")
+	AddOnlyDirs = strings.Split(dirs[1], "|")
+	OnlyDirs = strings.Split(dirs[2], "|")
+	DelDirs = strings.Split(dirs[3], "|")
 	watch, _ := fsnotify.NewWatcher()
 	defer watch.Close()
 	w := Watch{watch: watch}
