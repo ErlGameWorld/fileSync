@@ -82,7 +82,7 @@ func IsExist(f string) bool {
 // 收集更改了的文件
 func CollectFile(File string) {
 	ext := filepath.Ext(File)
-	if ext != idea && ext != git && ext != svn && ext != lock && ext != bea && ext != "" && ext != idea && (ext == erl || ext == beam || ext == hrl || ext == config || ext == ex || ext == dtl || ext == lfe) {
+	if ext != idea && ext != git && ext != svn && ext != lock && ext != bea && ext != "" && (ext == erl || ext == beam || ext == hrl || ext == config || ext == ex || ext == dtl || ext == lfe) {
 		CollectFiles[File] = struct{}{}
 		SendTimer.Reset(time.Millisecond * SendDur)
 	}
