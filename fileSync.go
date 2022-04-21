@@ -19,6 +19,7 @@ const (
 )
 
 var CollectFiles map[string]struct{}
+var CollectExt map[string]struct{}
 var SendTimer *time.Timer
 var Str bytes.Buffer
 var AddExtraDirs []string
@@ -26,21 +27,6 @@ var AddOnlyDirs []string
 var OnlyDirs []string
 var DelDirs []string
 var LenBuff []byte
-
-const (
-	hrl    = ".hrl"
-	erl    = ".erl"
-	beam   = ".beam"
-	dtl    = ".dtl"
-	lfe    = "lfe"
-	ex     = "ex"
-	idea   = ".idea"
-	svn    = ".svn"
-	git    = ".git"
-	lock   = ".lock"
-	bea    = ".bea"
-	config = ".config"
-)
 
 type Watch struct {
 	watch *fsnotify.Watcher
@@ -82,7 +68,7 @@ func IsExist(f string) bool {
 // 收集更改了的文件
 func CollectFile(File string) {
 	ext := filepath.Ext(File)
-	if ext != idea && ext != git && ext != svn && ext != lock && ext != bea && ext != "" && (ext == erl || ext == beam || ext == hrl || ext == config || ext == ex || ext == dtl || ext == lfe) {
+	if _, ok := CollectExt[ext]; ok{
 		CollectFiles[File] = struct{}{}
 		SendTimer.Reset(time.Millisecond * SendDur)
 	}
@@ -294,23 +280,30 @@ func SendToErl() {
 
 func main() {
 	CollectFiles = map[string]struct{}{}
-	SendTimer = time.NewTimer(time.Millisecond * SleepDur)
-	defer SendTimer.Stop()
+	CollectExt = map[string]struct{}{}
 	LenBuff = make([]byte, 4)
 
+	SendTimer = time.NewTimer(time.Millisecond * SleepDur)
+	defer SendTimer.Stop()
+
 	Write([]byte("init"))
-	data, err := Read()
-	if err == io.EOF || err != nil {
-		return
+
+	args := os.Args
+
+	ExtList := strings.Split(args[2], "|")
+	for _, v := range ExtList {
+		CollectExt[v] = struct{}{}
 	}
-	dirs := strings.Split(string(data), "\r\n")
+
+	dirs := strings.Split(args[3], "\r\n")
 	AddExtraDirs = strings.Split(dirs[0], "|")
 	AddOnlyDirs = strings.Split(dirs[1], "|")
 	OnlyDirs = strings.Split(dirs[2], "|")
 	DelDirs = strings.Split(dirs[3], "|")
+
 	watch, _ := fsnotify.NewWatcher()
 	defer watch.Close()
 	w := Watch{watch: watch}
-	w.watchDir("./")
+	w.watchDir(args[1])
 	Read()
 }
