@@ -75,17 +75,17 @@ func CollectFile(File string) {
 }
 
 func isHidden(path string) bool {
-	for i := len(path) - 1; i > 0; i-- {
-		if path[i] != '.' {
-			continue
-		}
-		if os.IsPathSeparator(path[i-1]) {
-			return true
-		}
-	}
-	if path[0] == '.' {
-		return true
-	}
+	// for i := len(path) - 1; i > 0; i-- {
+	// 	if path[i] != '.' {
+	// 		continue
+	// 	}
+	// 	if os.IsPathSeparator(path[i-1]) {
+	// 		return true
+	// 	}
+	// }
+	// if path[0] == '.' {
+	// 	return true
+	// }
 	return false
 }
 
@@ -137,7 +137,7 @@ func (w *Watch) watchDir(dir string) {
 			select {
 			case ev := <-w.watch.Events:
 				{
-					if ev.Op&fsnotify.Create == fsnotify.Create {
+					if ev.Has(fsnotify.Create) {
 						//这里获取新创建文件的信息，如果是目录，则加入监控中
 						fi, err := os.Stat(ev.Name)
 						if err == nil && fi.IsDir() {
@@ -154,24 +154,24 @@ func (w *Watch) watchDir(dir string) {
 							CollectFile(ev.Name)
 						}
 					}
-					if ev.Op&fsnotify.Write == fsnotify.Write {
+					if ev.Has(fsnotify.Write) {
 						CollectFile(ev.Name)
 					}
-					if ev.Op&fsnotify.Remove == fsnotify.Remove {
+					if ev.Has(fsnotify.Remove) {
 						//如果删除文件是目录，则移除监控
 						fi, err := os.Stat(ev.Name)
 						if err == nil && fi.IsDir() {
 							w.watch.Remove(ev.Name)
 						}
 					}
-					if ev.Op&fsnotify.Rename == fsnotify.Rename {
+					if ev.Has(fsnotify.Rename) {
 						//如果重命名文件是目录，则移除监控
 						//注意这里无法使用os.Stat来判断是否是目录了
 						//因为重命名后，go已经无法找到原文件来获取信息了
 						//所以这里就简单粗爆的直接remove好了
 						w.watch.Remove(ev.Name)
 					}
-					if ev.Op&fsnotify.Chmod == fsnotify.Chmod {
+					if ev.Has(fsnotify.Chmod) {
 					}
 				}
 			case <-w.watch.Errors:

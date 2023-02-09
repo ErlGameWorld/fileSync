@@ -8,6 +8,9 @@
     go build -ldflags "-a -s -w"    
     ./upx396/upx --best fileSync
 
+# 升级版本
+ 先删除 go.mod  go.sum  然后执行go  mod init fileSync go mod tidy 然后编译
+
 
     
     
