@@ -75,18 +75,18 @@ func CollectFile(File string) {
 }
 
 func isHidden(path string) bool {
-	// for i := len(path) - 1; i > 0; i-- {
-	// 	if path[i] != '.' {
-	// 		continue
-	// 	}
-	// 	if os.IsPathSeparator(path[i-1]) {
-	// 		return true
-	// 	}
-	// }
-	// if path[0] == '.' {
-	// 	return true
-	// }
-	return false
+    for i := len(path) - 1; i > 0; i-- {
+        if path[i] != '.' {
+            continue
+        }
+        if os.IsPathSeparator(path[i-1]) {
+            return true
+        }
+    }
+    if path[0] == '.' {
+        return true
+    }
+    return false
 }
 
 func isOnlyDir(dirs []string, curDirs string) bool {
